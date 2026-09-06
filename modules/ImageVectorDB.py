@@ -6,7 +6,7 @@ import uuid
 class ImageVectorDB:
     def __init__(
         self, 
-        url: str = "http://localhost:6333", 
+        url: str = "http://127.0.0.1:6333", 
         collection_name: str = "images_embeddings",
         vector_size: int = 1024, # По умолчанию для jina-embeddings-v5-omni-small
         distance: models.Distance = models.Distance.COSINE
@@ -14,7 +14,7 @@ class ImageVectorDB:
         """
         Инициализация клиента Qdrant и создание коллекции, если её нет.
         """
-        self.client = QdrantClient(url=url)
+        self.client = QdrantClient(url=url, timeout=60)
         self.collection_name = collection_name
         self.vector_size = vector_size
         self.distance = distance
@@ -79,13 +79,37 @@ class ImageVectorDB:
         :param limit: Количество возвращаемых результатов.
         :return: Список словарей с именем изображения и оценкой сходства (score).
         """
-        results = self.client.search(
+        # Используем новый API query_points вместо search
+        results = self.client.query_points(
             collection_name=self.collection_name,
-            query_vector=query_vector,
+            query=query_vector,  # <-- ИЗМЕНЕНО: query вместо query_vector
             limit=limit
         )
         
+        # results.points содержит список точек
         return [
             {"image_name": hit.payload["image_name"], "score": hit.score}
-            for hit in results
+            for hit in results.points  # <-- ИЗМЕНЕНО: results.points
         ]
+    # def search_similar(
+    #     self, 
+    #     query_vector: List[float], 
+    #     limit: int = 5
+    # ) -> List[Dict[str, Any]]:
+    #     """
+    #     Ищет наиболее похожие изображения по заданному вектору.
+        
+    #     :param query_vector: Вектор запроса.
+    #     :param limit: Количество возвращаемых результатов.
+    #     :return: Список словарей с именем изображения и оценкой сходства (score).
+    #     """
+    #     results = self.client.search(
+    #         collection_name=self.collection_name,
+    #         query_vector=query_vector,
+    #         limit=limit
+    #     )
+        
+    #     return [
+    #         {"image_name": hit.payload["image_name"], "score": hit.score}
+    #         for hit in results
+    #     ]
